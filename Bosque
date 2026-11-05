@@ -1,0 +1,69 @@
+# 🌲 Sistema de Alerta Temprana de Incendios Forestales - Bosque La Primavera
+
+Este proyecto es una **prueba de concepto (PoC)** de un sistema IoT diseñado para detectar condiciones precursoras de incendios forestales en el Bosque La Primavera, Jalisco. Utiliza una arquitectura híbrida que combina **Machine Learning**, **reglas físicas** y **sensores de gases** para minimizar los falsos positivos y garantizar alertas oportunas.
+
+## 📋 Tabla de Contenidos
+1. [Arquitectura del Sistema](#arquitectura)
+2. [Hardware Requerido](#hardware)
+3. [Software y Dataset](#software)
+4. [El Modelo Predictivo (Lógica de 3 Reglas)](#modelo)
+5. [Instalación y Configuración](#instalacion)
+6. [¿Cómo ejecutar el proyecto?](#ejecucion)
+7. [Trabajo Futuro (Raspberry Pi)](#futuro)
+
+---
+
+## 1. Arquitectura del Sistema <a name="arquitectura"></a>
+El sistema opera en un ciclo continuo de lectura y evaluación:
+1. **Sensores:** Se leen la temperatura, humedad (DHT22), humo (MQ-2) y CO2/VOC (MQ-135).
+2. **Evaluación Híbrida:** Un modelo de Random Forest evalúa el clima, una regla física protege contra condiciones extremas, y los sensores de gas confirman la combustión.
+3. **Actuador:** Si el riesgo es ALERTA o CRÍTICO, se enciende un LED (simulando la activación de los rociadores).
+4. **Base de Datos:** Todos los eventos y alertas se registran en SQLite para su análisis histórico.
+
+---
+
+## 2. Hardware Requerido <a name="hardware"></a>
+*   **Procesador:** Raspberry Pi 4 Model B.
+*   **Sensor de Temperatura/Humedad:** DHT22.
+*   **Sensor de Humo/Gases:** MQ-2.
+*   **Sensor de Calidad de Aire (CO2):** MQ-135.
+*   **Sensor de Ubicación:** Módulo GPS NEO-6M.
+*   **Acondicionador de Señal:** ADC MCP3008 (necesario para leer los sensores analógicos MQ en la Pi).
+*   **Actuador:** LED con resistencia de 220Ω (simula el encendido de rociadores).
+
+---
+
+## 3. Software y Dataset <a name="software"></a>
+*   **Lenguaje:** Python 3.11+
+*   **Librerías principales:** `scikit-learn`, `pandas`, `joblib`, `numpy`.
+*   **Dataset de Entrenamiento:** [UCI Forest Fires Dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/forest-fires/forestfires.csv).
+    *   *Nota:* El dataset original no incluye sensores de humo, por lo que usamos variables ambientales (temp, humedad, índices de sequía) para predecir la vulnerabilidad del entorno.
+
+---
+
+## 4. El Modelo Predictivo (Lógica de 3 Reglas) <a name="modelo"></a>
+Para garantizar la seguridad del bosque, no dependemos únicamente del Machine Learning (que puede tener falsos positivos). Usamos un sistema de **3 Reglas**:
+
+1.  **Regla Física (Prevención):** Si la temperatura es `>= 35°C` y la humedad `<= 25%`, el sistema entra en estado CRÍTICO de inmediato. (Evita fallos del modelo ante climas extremos).
+2.  **Regla ML (Evaluación Ambiental):** Un modelo `RandomForestClassifier` entrenado calcula la probabilidad de que el ambiente sea propenso a incendios.
+3.  **Reglas de Gas (Confirmación):** Si el sensor MQ-2 (humo) supera los `500` o el MQ-135 (CO2) supera los `600`, el riesgo se eleva a `100%` (CRÍTICO), sin importar el clima.
+
+**Clasificación Final:**
+*   `NORMAL` (< 30%)
+*   `PRECAUCIÓN` (30% - 65%) -> LED apagado.
+*   `ALERTA` (65% - 85%) -> LED encendido.
+*   `CRÍTICO` (> 85%) -> LED encendido.
+
+---
+
+## 5. Instalación y Configuración <a name="instalacion"></a>
+
+Se recomienda usar un entorno de Anaconda:
+
+```bash
+# Crear y activar entorno
+conda create -n bosque-iot python=3.11 -y
+conda activate bosque-iot
+
+# Instalar dependencias
+conda install -c conda-forge pandas numpy scikit-learn joblib -y

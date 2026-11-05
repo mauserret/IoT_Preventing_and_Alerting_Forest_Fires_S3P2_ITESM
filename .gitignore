@@ -1,0 +1,4 @@
+﻿*.db
+*.pkl
+*.msi
+__pycache__/
