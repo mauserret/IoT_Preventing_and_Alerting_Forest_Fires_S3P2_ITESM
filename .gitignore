@@ -6,4 +6,3 @@ collector.env
 __pycache__/
 *.pkl
 *.msi
-secrets.h
