@@ -4,6 +4,14 @@ import sqlite3
 import time
 from datetime import datetime
 
+# Librerías Bot de Telegram
+import asyncio
+from telegram import Bot
+
+# Parametros iniciales del bot de telegram
+TOKEN = ""
+CHAT_ID = 
+
 # ─── 1. Cargar Modelo ─────────────────────────────────────────
 try:
     modelo = joblib.load('modelo_rf_fuerte.pkl')
@@ -11,10 +19,17 @@ except FileNotFoundError:
     print("⚠️ Error: No se encuentra 'modelo_rf_fuerte.pkl'.")
     exit()
 
-DEFAULTS = {
+"""DEFAULTS = {
     "wind": 4.0, "rain": 0.0, "FFMC": 90.0,
     "DMC": 100.0, "DC": 500.0, "ISI": 9.0
 }
+"""
+# DEFAULTS PARA NUEVAS PRUEBAS
+DEFAULTS = {
+    "wind": 3.5, "rain": 0.0, "FFMC": 84.0,
+    "DMC": 45.0, "DC": 180.0, "ISI": 4.5
+}
+
 LAT_DEFAULT, LON_DEFAULT = 20.6736, -103.5608
 
 # ─── 2. Lógica de Riesgo (3 Reglas) ───────────────────────────
@@ -60,6 +75,26 @@ def calcular_riesgo_hibrido(temp, humedad, humo_mq2, co2_mq135):
         "razon": razon
     }
 
+# Funcion para bot de Telegram
+
+async def mensaje_alerta(riesgo):
+    if riesgo >= 0.30:
+        if riesgo >= 0.85:
+            msg = "🚨 ALERTA DE INCENDIO\nSe han detectado niveles críticos en la zona, se requiere de acción inmediata"
+        elif riesgo >= 0.65:
+            msg = "⚠️ ALERTA\nSe han detectado probabilidades altas de incendio en la zona, se requiere de acciones preventivas"
+        else:
+            msg = "❕Precaución\nLas condiciones climáticas pueden propiciar un incendio"
+
+        bot = Bot(token=TOKEN)
+        async with bot:
+            await bot.send_message(
+                chat_id=CHAT_ID,
+                text=msg
+            )
+        print("   -> Mensaje enviado correctamente")
+    
+    
 # ─── 3. Base de Datos SQLite ──────────────────────────────────
 conn = sqlite3.connect('bosque_simulacion.db')
 cursor = conn.cursor()
@@ -79,11 +114,29 @@ conn.commit()
 if __name__ == "__main__":
     print("🚀 SIMULACIÓN LOCAL: ML + SQLite + LED (Sin Telegram) 🚀\n")
     
-    escenarios = [
+    """ escenarios = [
         {"nombre": "1. Día normal", "temp": 18.0, "humedad": 75.0, "humo": 120, "co2": 150},
         {"nombre": "2. Calor extremo (Regla Física)", "temp": 38.5, "humedad": 15.0, "humo": 150, "co2": 180},
         {"nombre": "3. Fogata (Se dispara MQ-2)", "temp": 22.0, "humedad": 60.0, "humo": 750, "co2": 250},
-        {"nombre": "4. Todo normal otra vez", "temp": 20.0, "humedad": 50.0, "humo": 200, "co2": 300}
+        {"nombre": "4. Todo normal otra vez", "temp": 20.0, "humedad": 50.0, "humo": 200, "co2": 300},
+        {"nombre": "5. Tarde templada estable", "temp": 21.0, "humedad": 48.0, "humo": 140, "co2": 240}  
+        ] """
+        
+    escenarios = [
+        # 1. NORMAL (< 0.30) -> LED apagado | NO envía mensaje a Telegram
+        {"nombre": "1. Día fresco y húmedo (NORMAL)", "temp": 14.0, "humedad": 80.0, "humo": 110, "co2": 180},
+
+        # 2. PRECAUCIÓN (0.30 - 0.64) -> LED apagado | Envía: ❕Precaución
+        {"nombre": "2. Tarde cálida moderada (PRECAUCIÓN)", "temp": 24.5, "humedad": 42.0, "humo": 140, "co2": 220},
+
+        # 3. ALERTA (0.65 - 0.84) -> LED encendido | Envía: ⚠️ ALERTA
+        {"nombre": "3. Calor alto y baja humedad (ALERTA)", "temp": 32.5, "humedad": 27.0, "humo": 160, "co2": 260},
+
+        # 4. CRÍTICO por Regla Física (0.85) -> LED encendido | Envía: 🚨 ALERTA DE INCENDIO
+        {"nombre": "4. Calor extremo y sequía (CRÍTICO - Física)", "temp": 38.5, "humedad": 15.0, "humo": 150, "co2": 180},
+
+        # 5. CRÍTICO por Sensor de Gas (1.00) -> LED encendido | Envía: 🚨 ALERTA DE INCENDIO
+        {"nombre": "5. Presencia de humo/CO2 (CRÍTICO - Sensores)", "temp": 21.0, "humedad": 60.0, "humo": 750, "co2": 680}
     ]
 
     for esc in escenarios:
@@ -96,9 +149,14 @@ if __name__ == "__main__":
         alerta_activa = res['riesgo_final'] >= 0.65
         if alerta_activa:
             print("💡 [LED ENCENDIDO - SIMULANDO ROCIADORES]")
+            # Enviado de mensaje de alerta
         else:
             print("⚫ [LED APAGADO]")
 
+        # Mandar mensajes Bot de Telegram
+        if res['nivel'] != "NORMAL":
+            asyncio.run(mensaje_alerta(res['riesgo_final']))
+            
         # Guardar en SQLite
         cursor.execute('''
             INSERT INTO alertas (temperatura, humedad, nivel_humo, nivel_co2, nivel_riesgo, alerta_activa, latitud, longitud)
@@ -106,7 +164,7 @@ if __name__ == "__main__":
         ''', (esc['temp'], esc['humedad'], esc['humo'], esc['co2'], res['riesgo_final'], alerta_activa, LAT_DEFAULT, LON_DEFAULT))
         conn.commit()
 
-        print(f"   -> Resultado: {res['nivel']} ({res['riesgo_final']*100}%)")
+        print(f"   -> Resultado: {res['nivel']} ({res['riesgo_final']*100:.2f}%)")
         print(f"   -> Motivo: {res['razon']}")
         print(f"   -> Guardado en base de datos.\n")
         time.sleep(1)
