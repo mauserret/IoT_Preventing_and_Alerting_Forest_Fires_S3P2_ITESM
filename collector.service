@@ -1,0 +1,17 @@
+[Unit]
+Description=Forest IoT collector (MQTT -> SQLite buffer -> Azure)
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rey
+WorkingDirectory=/home/rey
+EnvironmentFile=/home/rey/collector.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/rey/collector.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
