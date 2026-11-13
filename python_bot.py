@@ -6,7 +6,7 @@ logging.basicConfig(
     format= "%(asctime)s - %(name)s - %(levelname)s - %(message)s", level = logging.INFO
 )
 
-TOKEN = "8910902918:AAHE4O2am7AJDckLg_Nl4oyGLdGa9qzfCII"
+TOKEN = ""
 
 # 1. Función que se ejecuta cuando el usuario escribe /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
