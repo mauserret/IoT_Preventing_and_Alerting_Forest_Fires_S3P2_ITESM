@@ -1,4 +1,8 @@
-﻿*.db
+collector.env
+*.db
+*.db-wal
+*.db-shm
+*.bak
+__pycache__/
 *.pkl
 *.msi
-__pycache__/
