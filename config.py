@@ -19,6 +19,13 @@ DEFAULTS = {
         "defaults": {"wind": 4.0, "rain": 0.0, "FFMC": 90.0, "DMC": 100.0, "DC": 500.0, "ISI": 9.0},
     },
     "sync": {"every_s": 30, "batch": 500, "keep_days": 7},
+    "alerts": {
+        "enabled": True,
+        "levels": ["ALERTA", "CRITICO"],
+        "cooldown_s": 600,
+        "check_every_s": 5,
+        "no_data_minutes": 10,
+    },
     "db_path": "/home/rey/buffer.db",
 }
 
