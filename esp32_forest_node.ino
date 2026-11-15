@@ -1,6 +1,5 @@
-#define BLYNK_TEMPLATE_ID   ""
-#define BLYNK_TEMPLATE_NAME ""
-#define BLYNK_AUTH_TOKEN    ""
+#include "secrets.h"
+
 #define BLYNK_PRINT Serial
 
 #include <WiFi.h>
@@ -13,11 +12,11 @@
 #define MQ2_PIN   34   // ADC1, through the voltage divider
 #define MQ135_PIN 35   // ADC1, through the voltage divider
 #define MQ7_PIN   32   // ADC1, through the voltage divider
-#define WARMUP_MS 180000UL
+#define WARMUP_MS 1200000UL   // 20 min: MQ sensors read high for a long time after a cold start
 
-char ssid[] = "";
-char pass[] = "";
-const char* MQTT_HOST = "";   // Pi static IP, e.g. 192.168.137.236
+char ssid[] = WIFI_SSID;
+char pass[] = WIFI_PASS;
+const char* MQTT_HOST = PI_MQTT_HOST;
 
 // ---- timing -----------------------------------------------------------
 const unsigned long SAMPLE_MS    = 5000UL;   // how often sensors are read (and events detected)
