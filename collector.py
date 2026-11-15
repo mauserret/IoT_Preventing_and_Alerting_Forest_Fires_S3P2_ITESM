@@ -1,4 +1,4 @@
-from risk import evaluar
+from risk import evaluar, preload
 import config
 import json, sqlite3, threading, time
 from datetime import datetime, timezone, timedelta
@@ -74,6 +74,7 @@ def syncer():
 
 
 mdb = open_db()
+preload(mdb)    # rebuild the gas baseline from the last hour, so a restart does not lose it
 
 
 def on_connect(client, userdata, flags, rc, props=None):

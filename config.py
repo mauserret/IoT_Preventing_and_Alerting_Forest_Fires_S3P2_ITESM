@@ -11,7 +11,19 @@ CONFIG_PATH = os.environ.get("FOREST_CONFIG", "/home/rey/config.json")
 
 DEFAULTS = {
     "schema": 1,
-    "gas_thresholds": {"mq2": 1500, "mq135": 1500, "mq7": 1500},
+    # Absolute SAFETY NET only (very high counts). The sensitive rule is "rise" below.
+    "gas_thresholds": {"mq2": 800, "mq135": 1000, "mq7": 2800},
+    # Alert when a sensor rises well above its own recent median (see gasrise.py)
+    "rise": {
+        "enabled": True,
+        "window_min": 60,          # baseline = median of the last 60 min
+        "min_history_min": 15,     # need this much history before judging
+        "min_samples": 10,
+        "confirm": 2,              # consecutive over-readings needed
+        "freeze_max_min": 60,      # after this long over, accept it as the new normal
+        "ratio": {"mq2": 1.5, "mq135": 1.5, "mq7": 1.5},
+        "min_delta": {"mq2": 100, "mq135": 120, "mq7": 300},
+    },
     "levels": {"critico": 0.85, "alerta": 0.65, "precaucion": 0.30},
     "physical_rule": {"temp_min": 35.0, "rh_max": 25.0, "risk": 0.85},
     "model": {
