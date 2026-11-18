@@ -1,6 +1,6 @@
 import json, time
 from datetime import datetime, timedelta, timezone
-
+import math
 import joblib, pandas as pd
 import config
 from gasrise import RiseDetector, NAMES
@@ -40,7 +40,24 @@ def preload(db):
         except Exception:
             continue
     print(f"risk: preloaded {n} readings for the gas baseline", flush=True)
+    
+def calibrate_ml(prob_ml, p_local=0.02, p_train=0.52):
+    """Shifts the ML probability from Portugal's base rate to Zapopan's."""
+    if prob_ml is None or prob_ml <= 0.01 or prob_ml >= 0.99:
+        return prob_ml
+    logit = math.log(prob_ml / (1 - prob_ml))
+    shift = math.log(p_local / (1 - p_local)) - math.log(p_train / (1 - p_train))
+    return 1.0 / (1.0 + math.exp(-(logit + shift)))
 
+def zapopan_climate_score(t, h):
+    if t is None or h is None:
+        return 0.0
+    # 20°C is normal (0.0), 40°C is extreme (1.0)
+    t_score = max(0.0, min(1.0, (t - 20.0) / 20.0))
+    # 80% humidity is normal (0.0), 10% humidity is extreme dry (1.0)
+    h_score = max(0.0, min(1.0, (80.0 - h) / 70.0))
+    # Must be BOTH hot AND dry to score high
+    return t_score * h_score
 
 def nivel(r, levels):
     if r is None:                    return "SIN_DATOS"
@@ -58,11 +75,23 @@ def evaluar(d, now=None):
     if t is not None and h is not None:
         rule = cfg["physical_rule"]
         modelo = get_model()
+        
         if t >= rule["temp_min"] and h <= rule["rh_max"]:
             prob, razon = rule["risk"], "Regla fisica: calor extremo y sequia"
-        elif modelo is not None:
-            X = pd.DataFrame([{"temp": t, "RH": h, **cfg["model"]["defaults"]}])[FEATURES]
-            prob, razon = float(modelo.predict_proba(X)[0][1]), "Evaluacion ambiental (ML)"
+        else:
+            # 1. Get the ML probability (context from Portugal model)
+            prob_ml = 0.0
+            if modelo is not None:
+                X = pd.DataFrame([{"temp": t, "RH": h, **cfg["model"]["defaults"]}])[FEATURES]
+                prob_ml = float(modelo.predict_proba(X)[0][1])
+                prob_ml = calibrate_ml(prob_ml)
+            
+            # 2. Get the Zapopan local score
+            prob_local = zapopan_climate_score(t, h)
+            
+            # 3. Use whichever is higher (Local weather OR ML model)
+            prob = max(prob_ml, prob_local)
+            razon = f"Clima local Zapopan ({prob_local*100:.0f}%) + ML ({prob_ml*100:.0f}%)"
 
     # 1) rise over each sensor's own recent baseline (the sensitive rule)
     rises, bases = [], {}

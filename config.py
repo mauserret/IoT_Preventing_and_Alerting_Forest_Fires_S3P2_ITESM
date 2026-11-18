@@ -7,7 +7,10 @@
 """
 import json, os
 
-CONFIG_PATH = os.environ.get("FOREST_CONFIG", "/home/rey/config.json")
+if os.path.exists("config.json"):
+    CONFIG_PATH = "config.json"
+else:
+    CONFIG_PATH = os.environ.get("FOREST_CONFIG", "/home/rey/config.json")
 
 DEFAULTS = {
     "schema": 1,

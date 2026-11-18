@@ -4,8 +4,8 @@
   "levels": { "critico": 0.85, "alerta": 0.65, "precaucion": 0.30 },
   "physical_rule": { "temp_min": 35.0, "rh_max": 25.0, "risk": 0.85 },
   "model": {
-    "path": "/home/rey/modelo_rf_fuerte.pkl",
-    "defaults": { "wind": 4.0, "rain": 0.0, "FFMC": 90.0, "DMC": 100.0, "DC": 500.0, "ISI": 9.0 }
+    "path": "modelo_rf_fuerte.pkl",
+    "defaults": { "wind": 4.0, "rain": 0.0, "FFMC": 85.0, "DMC": 50.0, "DC": 300.0, "ISI": 5.0 }
   },
   "sync": { "every_s": 30, "batch": 500, "keep_days": 7 },
   "db_path": "/home/rey/buffer.db"
